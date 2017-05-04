@@ -1,0 +1,118 @@
+#!/bin/bash
+
+#TANIMLAMALAR
+#=============
+ #DEGISKENLER
+ #------------
+  bugun=`date +"%Y%m%d"`
+ # Yolun bu sekilde yazilmasinin nedeni: "Paths" fonksiyonu sadece ilk calistirma yapildigi zaman kullaniyor.
+ #   sayfanin ikinci ve daha fazla kez calistirilmasinda asagidaki yol kullaniliyor.
+  ConfFile="Conf/backup.config"
+
+ #DIZILER
+ #--------
+  PathListe=()
+  PathListeIcerik=()
+  ConfListe=()
+  ConfListeDizi=()
+
+ #FONKSIYONLAR
+ #--------------
+  function Paths(){
+   BinScript=$(find $RootDir -name 'BinScript')
+   ConfDir=$(find $RootDir -name 'Conf')
+   LibDir=$(find $RootDir -name 'Lib')
+   ConfFile=$ConfDir'/backup.config'
+  }
+
+  function ConfigDeger(){
+    sed 's/^ *//g' $ConfFile | grep -v '^#' | grep -v '^;' | cut -d '#' -f1 | grep -v -e '^[[:space:]]*$' | awk ' /'$@'/ {print $3;exit} '
+  }
+
+ #YOLLARIN TANIMLANMASI
+ #-----------------------
+  # Program calisma klasorunun  birden fazla yerde olma durumuna karsi diziye alinmasi
+  for PathListe in $(find / -name 'Pg_Backup')
+   do
+	PathListeIcerik+=($PathListe)
+  done
+
+  # Birden fazla secenek olmasi durumunda kullaniciya seceneklerin liste halinde gosterilmesi ve secim yapmasinin istenmesi
+  #   Secime gore belirlenen Program Yolunun varsayilan olarak config dosyasina kayit isleminin gerceklestirilmesi.
+  if [[ "$(ConfigDeger Script_FirstRun)" == "IlkCalistirma"  ]]; then
+     if [[ 1 < ${#PathListeIcerik[@]} ]]; then
+        echo -e "\nSISTEMDE BIRDEN FAZLA AYNI PROGRAM YOLU BULUNDU.\nLUTFEN DOGRU SECIMI YAPINIZ...\n"
+
+        for (( i=0; i<${#PathListeIcerik[@]}; i++ ))
+         do
+           echo "[$i] : "${PathListeIcerik[$i]}
+        done
+
+        read Secim
+        RootDir=${PathListeIcerik[$Secim]}
+        Paths	#Fonksiyon
+     else
+        RootDir=${PathListeIcerik[0]}
+        Paths	#Fonksiyon
+     fi
+  fi
+
+ # Yollarin backup.config e kaydedilmesi islemleri
+ if [[ "$(ConfigDeger Script_FirstRun)" == "IlkCalistirma" ]]; then
+ # KLASOR Yolları
+  sed -i 's,'"$(ConfigDeger RootDirPath)"','"$RootDir"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger ScriptsDirPath)"','"$BinScript"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger ConfDirPath)"','"$ConfDir"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger LibDirPath)"','"$LibDir"',' $ConfFile
+ # SOURCE Adresleri
+  sed -i 's,source Lib/parametre_finder.lib,'"source $(ConfigDeger LibDirPath)/parametre_finder.lib"',' $BinScript/backup_dir.sh
+  sed -i 's,source Lib/parametre_finder.lib,'"source $(ConfigDeger LibDirPath)/parametre_finder.lib"',' $BinScript/backup_pg.sh
+  sed -i 's,source Lib/parametre_finder.lib,'"source $(ConfigDeger LibDirPath)/parametre_finder.lib"',' $BinScript/crontab.sh
+  sed -i 's,source Lib/parametre_finder.lib,'"source $(ConfigDeger LibDirPath)/parametre_finder.lib"',' $BinScript/system.sh
+  sed -i 's,source Lib/parametre_finder.lib,'"source $(ConfigDeger LibDirPath)/parametre_finder.lib"',' $BinScript/test.sh
+ # RENK
+  sed -i 's,source Lib/colors.lib,'"source $(ConfigDeger LibDirPath)/colors.lib"',' Lib/function_finder.lib
+  sed -i 's,source Lib/colors.lib,'"source $(ConfigDeger LibDirPath)/colors.lib"',' $BinScript/test.sh
+  sed -i 's,source Lib/colors.lib,'"source $(ConfigDeger LibDirPath)/colors.lib"',' $BinScript/crontab.sh
+ # FUNCTION
+  sed -i 's,source Lib/function_finder.lib,'"source $(ConfigDeger LibDirPath)/function_finder.lib"',' $BinScript/backup_dir.sh
+  sed -i 's,source Lib/function_finder.lib,'"source $(ConfigDeger LibDirPath)/function_finder.lib"',' $BinScript/backup_pg.sh
+ # Kendisi
+  sed -i 's,ConfFile="Conf/backup.config",'"ConfFile='$ConfFile'"',' Lib/pathfinder.lib
+  sed -i 's,ConfFile="ConfPages/backup.config",'"ConfFile='$ConfFile'"',' Lib/parametre_finder.lib
+ # Conf/backup.config
+  sed -i 's,'"$(ConfigDeger Script_FirstRun)"','"H"',' $ConfFile
+ #DOSYA yollari
+  sed -i 's,'"$(ConfigDeger LogFileDir)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger LogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger LogDosyAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger ErrLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger ErrorLogAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger SystemLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger SystemLogAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger TarDirLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger TarDirLogAd)"',' $ConfFile
+ fi
+
+ if [[ ! -d $(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs ]]; then
+  sed -i 's,'"$(ConfigDeger LogFileDir)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger LogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger LogDosyAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger ErrLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger ErrorLogAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger SystemLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger SystemLogAd)"',' $ConfFile
+  sed -i 's,'"$(ConfigDeger TarDirLogFilePath)"','"$(ConfigDeger BckRootDir)/$(ConfigDeger SvrNameDir)/$bugun/Logs/$(ConfigDeger TarDirLogAd)"',' $ConfFile
+ fi
+
+ #DEGISKENLERIN TANIMLANMASI
+ #---------------------------
+  # "backup.config" dosyasi icindeki butun ayar tanimlarinin degisken haline getirilmesi.
+  for ConfListe in $(sed 's/^ *//g' $ConfFile | grep -v '^#' | grep -v '^;' | cut -d '#' -f1 | grep -v -e '^[[:space:]]*$' | cut -d '=' -f1)
+   do
+     ConfListeDizi+=($ConfListe) # dizi icine ekleniyor.
+   done
+
+  for (( i=0 ; i<${#ConfListeDizi[@]}; i++ ))
+   do
+     read "${ConfListeDizi[$i]}" <<< "$(ConfigDeger ${ConfListeDizi[$i]})"
+     if [ "${ConfListeDizi[$i]}" == "" ]; then
+        echo "GELEN PARAMETRE BOS HATASI"
+        echo "Gonderilen Parametre : ${GelenParmt[$i]}"
+        exit;
+     fi
+  done
+

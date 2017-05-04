@@ -1,0 +1,51 @@
+#!/bin/bash
+GelenParmt=("$@")
+bugun=`date +"%Y%m%d"`
+ConfFile="ConfPages/backup.config"
+
+#TANIMLAMALAR
+#=============
+ #DIZI TANIMLARI
+ #---------------
+  DirListIcerik=()
+
+
+ #FONKSIYONLAR
+ #-------------
+   function ConfigDeger(){
+     sed 's/^ *//g' $ConfFile | grep -v '^#' | cut -d '#' -f1 | grep -v -e '^[[:space:]]*$' | awk ' /'$@'/ {print $3;exit} '
+   }
+
+  function ConfigDizi(){
+    awk '/'$@'/' $ConfFile | cut -d '(' -f2 | cut -d ')' -f1
+  }
+
+
+ #DIZI DOLDUR
+ #------------
+  #OLUSTURULAN KLASOR ISIMLERI DIZISI
+  for DirList in $(ConfigDizi MiscDir)
+   do
+     DirListIcerik+=($DirList)
+   done
+
+
+#GELEN DEGERLERIN degisken olarak belitlenip karsiliklarinin atanmasi.
+  for (( i=0 ; i<${#GelenParmt[@]}; i++ ))
+   do
+      read "${GelenParmt[$i]}" <<< "$(ConfigDeger ${GelenParmt[$i]})"
+
+      #Gelen parametrede klasorleri isaret eden degiskenlerin tanimlanmasi icin
+       for (( k=0; k<${#DirListIcerik[@]}; k++ ))
+        do
+	  if [[ "${GelenParmt[$i]}" ==  "${DirListIcerik[$k]}" ]]; then
+	     read "${DirListIcerik[$k]}" <<< "${DirListIcerik[$k]}"
+	  fi
+        done
+
+      if [ "${GelenParmt[$i]}" == "" ]; then
+	echo "GELEN PARAMETRE BOS HATASI"
+        echo "Gonderilen Parametre : ${GelenParmt[$i]}"
+	exit;
+      fi
+  done
