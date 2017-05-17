@@ -28,7 +28,7 @@
 
    if [[ $(($son-$bas)) -ne -1 ]]; then sed -i "$bas,$son d" $ConfFile; fi
 
-   for PgDbListe in $(locate main/postgresql.conf)
+   for PgDbListe in $(locate /etc/*postgresql.conf)
     do
       PgDbListeIcerik+=($PgDbListe)
     done
