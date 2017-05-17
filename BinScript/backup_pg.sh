@@ -148,7 +148,7 @@
     i=0
     # Birden fazla db oldugunda ve statusleri active ise yedegini alacak
     while [[ "$(ConfigDeger Pg_Status_[$i])" == "active" ]]; do
-      PostgisVersiyon=$(dpkg-query -l | grep "postgresql-$DB_Ver-postgis" -m 1 | awk '{print $3;exit}' | cut -d '-' -f1 | awk '{print substr($1,1,3); }')
+      PostgisVersiyon=$(dpkg-query -l | grep "postgresql-$DB_Ver-postgis-[[:digit:]]" | awk '{print $2;exit}' | cut -d '-' -f4)
       mkdir -p $BckRootDir/$SvrNameDir/$bugun/$Database/$DB_Ver
       chown -R postgres:postgres $BckRootDir/$SvrNameDir/$bugun/$Database/$DB_Ver
 
